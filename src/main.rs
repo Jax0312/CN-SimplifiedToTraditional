@@ -1,11 +1,8 @@
 #[macro_use]
-extern crate rocket;
 use std::{collections::HashMap};
-use rocket::serde::json::Json;
-use rocket::http::Method;
 use serde::Serialize;
-use std::error::Error;
-use rocket_cors::{AllowedOrigins, CorsOptions};
+use actix_cors::Cors;
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, http};
 mod map_simple_to_traditional;
 
 #[derive(Serialize)]
@@ -13,28 +10,31 @@ pub struct Payload {
     pub data: HashMap<String, String>,
 }
 
-#[get("/<data>")]
-fn simplified_to_traditional(data: &str) -> Json<Payload>{
-    Json(Payload{data: map_simple_to_traditional::generate_map(data.trim().split("").collect::<Vec<&str>>())})
+#[get("/{data}")]
+async fn get_message(data: web::Path<String>) -> impl Responder {
+    // // Serialize the message to JSON and return it as the response
+    let payload = Payload{data: map_simple_to_traditional::generate_map(data.trim().split("").collect::<Vec<&str>>())};
+    HttpResponse::Ok().json(payload)
 }
 
-#[rocket::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
 
-    let cors = CorsOptions::default()
-        .allowed_origins(AllowedOrigins::all())
-        .allowed_methods(
-            vec![Method::Get, Method::Post, Method::Patch]
-                .into_iter()
-                .map(From::from)
-                .collect(),
-        )
-        .allow_credentials(true)
-        .to_cors()?;
+        let cors = Cors::default().allow_any_origin()
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+            .allowed_header(http::header::CONTENT_TYPE)
+            .max_age(3600);
 
-    rocket::build().mount("/", routes![simplified_to_traditional]).attach(cors).launch().await?;
-
-    Ok(())
-
+        App::new().wrap(cors)
+            .service(get_message)
+    })
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await
 }
+
+
+
 
