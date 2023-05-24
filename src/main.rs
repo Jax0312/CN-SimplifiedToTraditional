@@ -1,5 +1,4 @@
-#[macro_use]
-use std::{collections::HashMap};
+use std::collections::HashMap;
 use serde::Serialize;
 use actix_cors::Cors;
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, http};
@@ -30,7 +29,7 @@ async fn main() -> std::io::Result<()> {
         App::new().wrap(cors)
             .service(get_message)
     })
-        .bind(("127.0.0.1", 8080))?
+        .bind(("0.0.0.0", 8080))?
         .run()
         .await
 }
